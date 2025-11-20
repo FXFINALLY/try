@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>堵车+消除 小试玩原型</title>
+<style>
+*{
+  box-sizing:border-box;
+}
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  background:#f0f2f5;
+}
+#game{
+  width:680px;
+  max-width:100%;
+  margin:20px auto;
+  background:#fff;
+  border-radius:10px;
+  padding:16px 18px 20px;
+  box-shadow:0 2px 8px rgba(0,0,0,0.15);
+}
+h1{
+  font-size:22px;
+  margin:0 0 8px;
+}
+h2{
+  font-size:16px;
+  margin:14px 0 6px;
+}
+.tip{
+  margin:0 0 8px;
+  font-size:13px;
+  color:#555;
+}
+.small-tip{
+  margin:4px 0 0;
+  font-size:12px;
+  color:#777;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(5,48px);
+  grid-auto-rows:48px;
+  gap:6px;
+  justify-content:center;
+}
+.grid-cell{
+  background:#e9ecef;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.lane{
+  display:flex;
+  gap:6px;
+  justify-content:center;
+  margin-top:4px;
+}
+.lane-cell{
+  width:80px;
+  height:46px;
+  background:#e9ecef;
+  border-radius:6px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+.token{
+  box-sizing:border-box;
+}
+.passenger.token{
+  width:32px;
+  height:32px;
+  border-radius:50%;
+}
+.car.token{
+  width:70px;
+  height:32px;
+  border-radius:8px;
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#333;
+  font-size:12px;
+  font-weight:bold;
+}
+.car-label{
+  pointer-events:none;
+}
+.token.red{
+  background:#ff6b6b;
+}
+.token.yellow{
+  background:#ffd93b;
+}
+.token.green{
+  background:#6bcf63;
+}
+.selected{
+  outline:3px solid rgba(0,0,0,0.7);
+}
+#waiting-area{
+  margin-top:4px;
+}
+.bar{
+  display:flex;
+  align-items:center;
+  margin:4px 0;
+  gap:6px;
+}
+.bar label{
+  width:80px;
+  font-size:13px;
+  color:#444;
+}
+.waiting-cars,
+.waiting-passengers{
+  flex:1;
+  min-height:40px;
+  background:#e9ecef;
+  border-radius:6px;
+  padding:4px;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:4px;
+}
+.counter{
+  width:70px;
+  text-align:right;
+  font-size:12px;
+  color:#555;
+}
+#message{
+  margin-top:8px;
+  min-height:20px;
+  font-size:13px;
+  font-weight:bold;
+  color:#333;
+}
+#restart{
+  margin-top:4px;
+  padding:6px 12px;
+  font-size:13px;
+  border-radius:4px;
+  border:1px solid #409eff;
+  background:#409eff;
+  color:#fff;
+  cursor:pointer;
+}
+#restart:hover{
+  background:#66b1ff;
+  border-color:#66b1ff;
+}
+</style>
+</head>
+<body>
+<div id="game">
+  <h1>堵车消除：乘客快上车</h1>
+  <p class="tip">
+    规则：点击三个相同颜色的乘客，将他们收集到等候区；点击堵塞区中右侧无车阻挡的车辆，让它驶入等候区。
+    等候区中同色乘客会自动上车，车满人后自动离开。所有乘客和车辆都离开即胜利。
+  </p>
+
+  <h2>乘客消除区</h2>
+  <div id="passenger-grid" class="grid"></div>
+
+  <h2>车辆堵塞区</h2>
+  <div id="jam-lane" class="lane"></div>
+  <p class="small-tip">只能点击右侧没有车阻挡的车辆，它们才可以驶入等候区。</p>
+
+  <h2>等候区</h2>
+  <div id="waiting-area">
+    <div class="bar">
+      <label>等待车辆：</label>
+      <div id="waiting-cars" class="waiting-cars"></div>
+      <span id="waiting-cars-info" class="counter"></span>
+    </div>
+    <div class="bar">
+      <label>等待乘客：</label>
+      <div id="waiting-passengers" class="waiting-passengers"></div>
+      <span id="waiting-passengers-info" class="counter"></span>
+    </div>
+  </div>
+
+  <div id="message"></div>
+  <button id="restart">重新开始</button>
+</div>
+
+<script>
+const COLORS = ['red','yellow','green'];
+const GRID_ROWS = 3;
+const GRID_COLS = 5;
+const GRID_SIZE = GRID_ROWS * GRID_COLS;
+const LANE_SIZE = 6;
+const MAX_WAITING_PASSENGERS = 9;
+const MAX_WAITING_CARS = 4;
+
+let passengerPool;
+let passengerGrid;
+let jamLane;
+let waitingPassengers;
+let waitingCars;
+let departedCars;
+let selectedPassengerIndices;
+let gameOver;
+let nextId;
+
+let gridEl, jamLaneEl, waitingPassengersEl, waitingCarsEl, messageEl;
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]] = [arr[j],arr[i]];
+  }
+}
+
+function initGame(){
+  gameOver = false;
+  nextId = 1;
+  departedCars = 0;
+  selectedPassengerIndices = [];
+  waitingPassengers = [];
+  waitingCars = [];
+  setMessage('提示：先疏通右侧的车辆，再合理收集乘客，避免把等候区塞满。');
+
+  // 随机生成车队（堵车区的车辆）
+  const carConfigs = [];
+  for(let i=0;i<LANE_SIZE;i++){
+    const color = COLORS[Math.floor(Math.random()*COLORS.length)];
+    const capacity = Math.random() < 0.5 ? 3 : 6;
+    carConfigs.push({id:nextId++, color, capacity, loaded:0});
+  }
+
+  // 统计每种颜色的总载客量，用来生成等量乘客
+  const capacityByColor = {red:0, yellow:0, green:0};
+  carConfigs.forEach(car=>{
+    capacityByColor[car.color] += car.capacity;
+  });
+
+  passengerPool = [];
+  COLORS.forEach(color=>{
+    for(let i=0;i<capacityByColor[color];i++){
+      passengerPool.push(color);
+    }
+  });
+  shuffle(passengerPool);
+
+  // 初始化乘客格子
+  passengerGrid = new Array(GRID_SIZE).fill(null);
+  refillPassengerGrid();
+
+  // 初始化堵车车道
+  jamLane = new Array(LANE_SIZE).fill(null);
+  const shuffledCars = carConfigs.slice();
+  shuffle(shuffledCars);
+  for(let i=0;i<LANE_SIZE;i++){
+    jamLane[i] = shuffledCars[i];
+  }
+
+  renderPassengerGrid();
+  renderJamLane();
+  renderWaitingPassengers();
+  renderWaitingCars();
+}
+
+function refillPassengerGrid(){
+  for(let i=0;i<GRID_SIZE;i++){
+    if(!passengerGrid[i] && passengerPool.length>0){
+      const color = passengerPool.pop();
+      passengerGrid[i] = {id:nextId++, color};
+    }
+  }
+}
+
+function renderPassengerGrid(){
+  gridEl.innerHTML = '';
+  for(let i=0;i<GRID_SIZE;i++){
+    const cell = document.createElement('div');
+    cell.className = 'grid-cell';
+    cell.dataset.index = i;
+    const passenger = passengerGrid[i];
+    if(passenger){
+      const token = document.createElement('div');
+      token.className = 'passenger token ' + passenger.color;
+      if(selectedPassengerIndices.includes(i)){
+        token.classList.add('selected');
+      }
+      cell.appendChild(token);
+    }
+    gridEl.appendChild(cell);
+  }
+}
+
+function renderJamLane(){
+  jamLaneEl.innerHTML = '';
+  for(let i=0;i<LANE_SIZE;i++){
+    const cell = document.createElement('div');
+    cell.className = 'lane-cell';
+    cell.dataset.index = i;
+    const car = jamLane[i];
+    if(car){
+      const carEl = document.createElement('div');
+      carEl.className = 'car token ' + car.color;
+      const label = document.createElement('div');
+      label.className = 'car-label';
+      label.textContent = car.capacity; // 显示总座位数
+      carEl.appendChild(label);
+      cell.appendChild(carEl);
+    }
+    jamLaneEl.appendChild(cell);
+  }
+}
+
+function renderWaitingPassengers(){
+  waitingPassengersEl.innerHTML = '';
+  waitingPassengers.forEach(p=>{
+    const el = document.createElement('div');
+    el.className = 'passenger token ' + p.color;
+    waitingPassengersEl.appendChild(el);
+  });
+  const info = document.getElementById('waiting-passengers-info');
+  if(info){
+    info.textContent = waitingPassengers.length + '/' + MAX_WAITING_PASSENGERS;
+  }
+}
+
+function renderWaitingCars(){
+  waitingCarsEl.innerHTML = '';
+  waitingCars.forEach(car=>{
+    const el = document.createElement('div');
+    el.className = 'car token ' + car.color;
+    const label = document.createElement('div');
+    label.className = 'car-label';
+    label.textContent = car.loaded + '/' + car.capacity;
+    el.appendChild(label);
+    waitingCarsEl.appendChild(el);
+  });
+  const info = document.getElementById('waiting-cars-info');
+  if(info){
+    info.textContent = waitingCars.length + '/' + MAX_WAITING_CARS;
+  }
+}
+
+function setMessage(text){
+  messageEl.textContent = text || '';
+}
+
+function handlePassengerClick(idx){
+  if(gameOver) return;
+  const passenger = passengerGrid[idx];
+  if(!passenger) return;
+
+  const selPos = selectedPassengerIndices.indexOf(idx);
+  if(selPos !== -1){
+    selectedPassengerIndices.splice(selPos,1);
+  }else{
+    selectedPassengerIndices.push(idx);
+  }
+
+  if(selectedPassengerIndices.length === 3){
+    const colors = selectedPassengerIndices.map(i=>passengerGrid[i]?.color);
+    if(colors[0] && colors.every(c=>c === colors[0])){
+      const matchColor = colors[0];
+      // 删除格子中的乘客
+      selectedPassengerIndices.forEach(i=>{
+        passengerGrid[i] = null;
+      });
+      selectedPassengerIndices = [];
+      // 补全乘客格子
+      refillPassengerGrid();
+      renderPassengerGrid();
+      // 将 3 名乘客放入等候区
+      addPassengersToWaiting(matchColor,3);
+      autoBoardAll();
+      checkWinLose();
+      setMessage('');
+    }else{
+      // 颜色不一致，清空选中
+      selectedPassengerIndices = [];
+      renderPassengerGrid();
+      setMessage('需要选择三个相同颜色的乘客。');
+    }
+  }else{
+    renderPassengerGrid();
+  }
+}
+
+function handleCarClick(idx){
+  if(gameOver) return;
+  const car = jamLane[idx];
+  if(!car) return;
+  // 检查右侧是否有车阻挡
+  for(let i=idx+1;i<LANE_SIZE;i++){
+    if(jamLane[i]){
+      setMessage('前方有车辆阻挡，这辆车暂时无法驶入等候区。');
+      return;
+    }
+  }
+  // 移动车辆到等候区
+  jamLane[idx] = null;
+  renderJamLane();
+  addCarToWaiting(car);
+  autoBoardAll();
+  checkWinLose();
+}
+
+function addPassengersToWaiting(color,count){
+  for(let i=0;i<count;i++){
+    waitingPassengers.push({id:nextId++, color});
+  }
+  renderWaitingPassengers();
+}
+
+function addCarToWaiting(car){
+  if(typeof car.loaded !== 'number') car.loaded = 0;
+  waitingCars.push(car);
+  renderWaitingCars();
+}
+
+function autoBoardAll(){
+  let changed = false;
+  do{
+    changed = false;
+    // 尝试给每辆车自动上客
+    for(const car of waitingCars){
+      let room = car.capacity - car.loaded;
+      if(room <= 0) continue;
+      let idx = waitingPassengers.findIndex(p=>p.color === car.color);
+      while(idx !== -1 && room > 0){
+        waitingPassengers.splice(idx,1);
+        car.loaded += 1;
+        room -= 1;
+        changed = true;
+        idx = waitingPassengers.findIndex(p=>p.color === car.color);
+      }
+    }
+    // 满员的车离开
+    for(let i=waitingCars.length-1;i>=0;i--){
+      const car = waitingCars[i];
+      if(car.loaded >= car.capacity){
+        waitingCars.splice(i,1);
+        departedCars += 1;
+        changed = true;
+      }
+    }
+  }while(changed);
+
+  renderWaitingPassengers();
+  renderWaitingCars();
+}
+
+function hasAnyMatch(){
+  for(const car of waitingCars){
+    const room = car.capacity - car.loaded;
+    if(room <= 0) continue;
+    if(waitingPassengers.some(p=>p.color === car.color)){
+      return true;
+    }
+  }
+  return false;
+}
+
+function checkWinLose(){
+  if(gameOver) return;
+  const anyPassengersLeft = passengerPool.length > 0 ||
+    passengerGrid.some(cell=>cell) ||
+    waitingPassengers.length > 0;
+  const anyCarsLeft = jamLane.some(cell=>cell) ||
+    waitingCars.length > 0;
+
+  if(!anyPassengersLeft && !anyCarsLeft){
+    gameOver = true;
+    setMessage('恭喜，所有乘客都成功上车离开了！点击“重新开始”再玩一局。');
+    return;
+  }
+
+  if(waitingPassengers.length >= MAX_WAITING_PASSENGERS &&
+     waitingCars.length >= MAX_WAITING_CARS &&
+     !hasAnyMatch()){
+    gameOver = true;
+    setMessage('游戏失败：等候区乘客和车辆都已经满了，且没有可以匹配的颜色。');
+  }
+}
+
+window.addEventListener('DOMContentLoaded', ()=>{
+  gridEl = document.getElementById('passenger-grid');
+  jamLaneEl = document.getElementById('jam-lane');
+  waitingPassengersEl = document.getElementById('waiting-passengers');
+  waitingCarsEl = document.getElementById('waiting-cars');
+  messageEl = document.getElementById('message');
+
+  gridEl.addEventListener('click', e=>{
+    const cell = e.target.closest('.grid-cell');
+    if(!cell) return;
+    const idx = Number(cell.dataset.index);
+    handlePassengerClick(idx);
+  });
+
+  jamLaneEl.addEventListener('click', e=>{
+    const cell = e.target.closest('.lane-cell');
+    if(!cell) return;
+    const idx = Number(cell.dataset.index);
+    handleCarClick(idx);
+  });
+
+  document.getElementById('restart').addEventListener('click', ()=>{
+    initGame();
+  });
+
+  initGame();
+});
+</script>
+</body>
+</html>
