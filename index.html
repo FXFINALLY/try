@@ -1,521 +1,425 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8" />
-<title>堵车+消除 小试玩原型</title>
-<style>
-*{
-  box-sizing:border-box;
-}
-body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
-  background:#f0f2f5;
-}
-#game{
-  width:680px;
-  max-width:100%;
-  margin:20px auto;
-  background:#fff;
-  border-radius:10px;
-  padding:16px 18px 20px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.15);
-}
-h1{
-  font-size:22px;
-  margin:0 0 8px;
-}
-h2{
-  font-size:16px;
-  margin:14px 0 6px;
-}
-.tip{
-  margin:0 0 8px;
-  font-size:13px;
-  color:#555;
-}
-.small-tip{
-  margin:4px 0 0;
-  font-size:12px;
-  color:#777;
-}
-.grid{
-  display:grid;
-  grid-template-columns:repeat(5,48px);
-  grid-auto-rows:48px;
-  gap:6px;
-  justify-content:center;
-}
-.grid-cell{
-  background:#e9ecef;
-  border-radius:6px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-}
-.lane{
-  display:flex;
-  gap:6px;
-  justify-content:center;
-  margin-top:4px;
-}
-.lane-cell{
-  width:80px;
-  height:46px;
-  background:#e9ecef;
-  border-radius:6px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-}
-.token{
-  box-sizing:border-box;
-}
-.passenger.token{
-  width:32px;
-  height:32px;
-  border-radius:50%;
-}
-.car.token{
-  width:70px;
-  height:32px;
-  border-radius:8px;
-  position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:#333;
-  font-size:12px;
-  font-weight:bold;
-}
-.car-label{
-  pointer-events:none;
-}
-.token.red{
-  background:#ff6b6b;
-}
-.token.yellow{
-  background:#ffd93b;
-}
-.token.green{
-  background:#6bcf63;
-}
-.selected{
-  outline:3px solid rgba(0,0,0,0.7);
-}
-#waiting-area{
-  margin-top:4px;
-}
-.bar{
-  display:flex;
-  align-items:center;
-  margin:4px 0;
-  gap:6px;
-}
-.bar label{
-  width:80px;
-  font-size:13px;
-  color:#444;
-}
-.waiting-cars,
-.waiting-passengers{
-  flex:1;
-  min-height:40px;
-  background:#e9ecef;
-  border-radius:6px;
-  padding:4px;
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:4px;
-}
-.counter{
-  width:70px;
-  text-align:right;
-  font-size:12px;
-  color:#555;
-}
-#message{
-  margin-top:8px;
-  min-height:20px;
-  font-size:13px;
-  font-weight:bold;
-  color:#333;
-}
-#restart{
-  margin-top:4px;
-  padding:6px 12px;
-  font-size:13px;
-  border-radius:4px;
-  border:1px solid #409eff;
-  background:#409eff;
-  color:#fff;
-  cursor:pointer;
-}
-#restart:hover{
-  background:#66b1ff;
-  border-color:#66b1ff;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>疏堵大作战 - 完美体验版</title>
+    <style>
+        :root {
+            --bg-color: #eef2f3;
+            --road-bg: #57606f;
+            --slot-bg: #dfe6e9;
+            --red: #ff6b81; --yellow: #feca57; --blue: #54a0ff; --green: #1dd1a1;
+        }
+        body { font-family: 'Nunito', sans-serif; background-color: var(--bg-color); margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; user-select: none; touch-action: none; }
+        header { padding: 10px; text-align: center; z-index: 10; }
+        h1 { margin: 0; font-size: 20px; color: #2f3542; }
+        .status { font-size: 12px; color: #57606f; background: white; padding: 4px 12px; border-radius: 15px; margin-top: 4px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        #game-container { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 400px; height: 100%; padding: 10px; box-sizing: border-box; }
+        .zone-label { font-size: 12px; font-weight: 800; color: #747d8c; margin-bottom: 4px; margin-left: 5px; text-transform: uppercase; }
+        #passenger-zone { position: relative; width: 320px; height: 240px; background-color: #f1f2f6; background-image: radial-gradient(#dfe4ea 15%, transparent 16%); background-size: 20px 20px; border: 4px solid #fff; border-radius: 12px; margin: 0 auto; box-shadow: inset 0 0 15px rgba(0,0,0,0.05), 0 5px 15px rgba(0,0,0,0.1); }
+        .exit-gate { position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); width: 80px; height: 8px; background: repeating-linear-gradient(45deg, #2ed573, #2ed573 10px, #ffffff 10px, #ffffff 20px); border-radius: 4px; box-shadow: 0 0 10px #2ed573; z-index: 5; }
+        .passenger { width: 36px; height: 36px; margin: 2px; position: absolute; z-index: 10; background-repeat: no-repeat; background-position: center bottom; background-size: contain; cursor: pointer; transform: translate3d(0,0,0); transition: transform 0.2s, filter 0.2s; will-change: transform, left, top; }
+        .passenger.red { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='16' r='12' fill='%23ff6b81' stroke='%23c44569' stroke-width='2'/%3E%3Cpath d='M16 32 Q10 60 32 60 Q54 60 48 32 L48 28 Q32 24 16 28 Z' fill='%23ff6b81' stroke='%23c44569' stroke-width='2'/%3E%3C/svg%3E"); }
+        .passenger.yellow { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='16' r='12' fill='%23feca57' stroke='%23ff9f43' stroke-width='2'/%3E%3Cpath d='M16 32 Q10 60 32 60 Q54 60 48 32 L48 28 Q32 24 16 28 Z' fill='%23feca57' stroke='%23ff9f43' stroke-width='2'/%3E%3C/svg%3E"); }
+        .passenger.blue { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='16' r='12' fill='%2354a0ff' stroke='%232e86de' stroke-width='2'/%3E%3Cpath d='M16 32 Q10 60 32 60 Q54 60 48 32 L48 28 Q32 24 16 28 Z' fill='%2354a0ff' stroke='%232e86de' stroke-width='2'/%3E%3C/svg%3E"); }
+        .passenger.green { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='16' r='12' fill='%231dd1a1' stroke='%2310ac84' stroke-width='2'/%3E%3Cpath d='M16 32 Q10 60 32 60 Q54 60 48 32 L48 28 Q32 24 16 28 Z' fill='%231dd1a1' stroke='%2310ac84' stroke-width='2'/%3E%3C/svg%3E"); }
+        .passenger.awake { transform: scale(1.2) translateY(-5px) !important; z-index: 50; filter: drop-shadow(0 0 5px rgba(0,0,0,0.3)); animation: jump 0.5s infinite alternate; }
+        @keyframes jump { from { transform: scale(1.2) translateY(-5px); } to { transform: scale(1.2) translateY(0); } }
+        .passenger.moving { z-index: 100; transition: none; }
+        .wall { background-color: #2f3542; border-radius: 4px; background-image: none; box-shadow: 0 4px 0 #000; }
+        .wall::after { content: ''; }
+        #car-zone { position: relative; width: 320px; height: 240px; background-color: var(--road-bg); border: 4px solid #fff; border-radius: 12px; margin: 0 auto; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        #car-zone::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(255,255,255,0.15) 2px, transparent 2px), linear-gradient(90deg, rgba(255,255,255,0.15) 2px, transparent 2px); background-size: 40px 40px; pointer-events: none; }
+        .car { position: absolute; display: flex; justify-content: center; align-items: center; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.4); cursor: pointer; z-index: 20; box-sizing: border-box; transition: transform 0.1s; }
+        .car::after { content: ''; position: absolute; background: rgba(0,0,0,0.15); border-radius: 2px; z-index: -1; }
+        .car.red { background: var(--red); border: 1px solid #c44569; } .car.yellow { background: var(--yellow); border: 1px solid #ff9f43; }
+        .car.blue { background: var(--blue); border: 1px solid #2e86de; } .car.green { background: var(--green); border: 1px solid #10ac84; }
+        .car::before { content: ''; position: absolute; background: rgba(255,255,255,0.4); border-radius: 2px; }
+        .car-lights { position: absolute; width: 100%; height: 100%; pointer-events: none; }
+        .car.face-l::before { top: 4px; bottom: 4px; left: 4px; width: 12px; } .car.face-l .car-lights { box-shadow: inset 4px 3px 0 -1px #ffeaa7, inset 4px -3px 0 -1px #ffeaa7, inset -2px 3px 0 0 #ff4757, inset -2px -3px 0 0 #ff4757; }
+        .car.face-r::before { top: 4px; bottom: 4px; right: 4px; width: 12px; } .car.face-r .car-lights { box-shadow: inset -4px 3px 0 -1px #ffeaa7, inset -4px -3px 0 -1px #ffeaa7, inset 2px 3px 0 0 #ff4757, inset 2px -3px 0 0 #ff4757; }
+        .car.face-u::before { left: 4px; right: 4px; top: 4px; height: 12px; } .car.face-u .car-lights { box-shadow: inset 3px 4px 0 -1px #ffeaa7, inset -3px 4px 0 -1px #ffeaa7, inset 3px -2px 0 0 #ff4757, inset -3px -2px 0 0 #ff4757; }
+        .car.face-d::before { left: 4px; right: 4px; bottom: 4px; height: 12px; } .car.face-d .car-lights { box-shadow: inset 3px -4px 0 -1px #ffeaa7, inset -3px -4px 0 -1px #ffeaa7, inset 3px 2px 0 0 #ff4757, inset -3px 2px 0 0 #ff4757; }
+        .car-contents { position: absolute; width:100%; height:100%; display:flex; justify-content:center; align-items:center; z-index:2; gap: 2px; }
+        .seat-dot { width: 8px; height: 8px; background: rgba(0,0,0,0.2); border-radius: 50%; border: 1px solid rgba(255,255,255,0.5); }
+        .seat-filled { background: white; box-shadow: 0 0 4px white; transform: scale(1.2); }
+        #dock-area { background: white; padding: 15px 10px; border-radius: 20px 20px 0 0; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); flex-grow: 1; display: flex; flex-direction: column; }
+        .dock-row { display: flex; justify-content: center; gap: 6px; margin-bottom: 15px; min-height: 45px; }
+        .slot { width: 40px; height: 40px; background: var(--slot-bg); border-radius: 8px; border: 2px solid #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); display:flex; justify-content:center; align-items:center; position: relative; }
+        .car-slot { width: 82px; height: 46px; background: var(--slot-bg); border-radius: 8px; border: 2px solid #fff; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); display:flex; justify-content:center; align-items:center; position: relative; }
+        .shake { animation: shake 0.4s; } @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+        .bounce { animation: bounce 0.3s; } @keyframes bounce { 50%{transform:scale(0.95)} }
+        #modal { position: fixed; top:0;left:0;width:100%;height:100%; background: rgba(47,53,66,0.9); display:none; justify-content:center; align-items:center; flex-direction:column; color:white; z-index:999; backdrop-filter: blur(5px); }
+        button { margin-top:30px; padding:12px 30px; font-size:20px; font-weight:bold; background: var(--green); border:none; color:white; border-radius:50px; cursor:pointer; }
+    </style>
 </head>
 <body>
-<div id="game">
-  <h1>堵车消除：乘客快上车</h1>
-  <p class="tip">
-    规则：点击三个相同颜色的乘客，将他们收集到等候区；点击堵塞区中右侧无车阻挡的车辆，让它驶入等候区。
-    等候区中同色乘客会自动上车，车满人后自动离开。所有乘客和车辆都离开即胜利。
-  </p>
-
-  <h2>乘客消除区</h2>
-  <div id="passenger-grid" class="grid"></div>
-
-  <h2>车辆堵塞区</h2>
-  <div id="jam-lane" class="lane"></div>
-  <p class="small-tip">只能点击右侧没有车阻挡的车辆，它们才可以驶入等候区。</p>
-
-  <h2>等候区</h2>
-  <div id="waiting-area">
-    <div class="bar">
-      <label>等待车辆：</label>
-      <div id="waiting-cars" class="waiting-cars"></div>
-      <span id="waiting-cars-info" class="counter"></span>
-    </div>
-    <div class="bar">
-      <label>等待乘客：</label>
-      <div id="waiting-passengers" class="waiting-passengers"></div>
-      <span id="waiting-passengers-info" class="counter"></span>
-    </div>
-  </div>
-
-  <div id="message"></div>
-  <button id="restart">重新开始</button>
+<header>
+    <h1>🚦 疏堵大作战</h1>
+    <div class="status">👥 乘客: <span id="p-count">0</span> | 🚌 车辆: <span id="c-count">0</span></div>
+</header>
+<div id="game-container">
+    <div><div class="zone-label">乘客区 <span style="color:#2ed573; font-weight:bold">(同色互通)</span></div><div id="passenger-zone"></div></div>
+    <div><div class="zone-label">堵车区</div><div id="car-zone"></div></div>
+    <div id="dock-area"><div class="dock-row" id="passenger-dock"></div><div class="dock-row" id="car-dock"></div></div>
 </div>
-
+<div id="modal"><h2 id="modal-title">游戏结束</h2><p id="modal-msg"></p><button onclick="game.init()">再玩一次</button></div>
 <script>
-const COLORS = ['red','yellow','green'];
-const GRID_ROWS = 3;
-const GRID_COLS = 5;
-const GRID_SIZE = GRID_ROWS * GRID_COLS;
-const LANE_SIZE = 6;
-const MAX_WAITING_PASSENGERS = 9;
-const MAX_WAITING_CARS = 4;
-
-let passengerPool;
-let passengerGrid;
-let jamLane;
-let waitingPassengers;
-let waitingCars;
-let departedCars;
-let selectedPassengerIndices;
-let gameOver;
-let nextId;
-
-let gridEl, jamLaneEl, waitingPassengersEl, waitingCarsEl, messageEl;
-
-function shuffle(arr){
-  for(let i=arr.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
-    [arr[i],arr[j]] = [arr[j],arr[i]];
-  }
-}
-
-function initGame(){
-  gameOver = false;
-  nextId = 1;
-  departedCars = 0;
-  selectedPassengerIndices = [];
-  waitingPassengers = [];
-  waitingCars = [];
-  setMessage('提示：先疏通右侧的车辆，再合理收集乘客，避免把等候区塞满。');
-
-  // 随机生成车队（堵车区的车辆）
-  const carConfigs = [];
-  for(let i=0;i<LANE_SIZE;i++){
-    const color = COLORS[Math.floor(Math.random()*COLORS.length)];
-    const capacity = Math.random() < 0.5 ? 3 : 6;
-    carConfigs.push({id:nextId++, color, capacity, loaded:0});
-  }
-
-  // 统计每种颜色的总载客量，用来生成等量乘客
-  const capacityByColor = {red:0, yellow:0, green:0};
-  carConfigs.forEach(car=>{
-    capacityByColor[car.color] += car.capacity;
-  });
-
-  passengerPool = [];
-  COLORS.forEach(color=>{
-    for(let i=0;i<capacityByColor[color];i++){
-      passengerPool.push(color);
+class Game {
+    constructor() {
+        this.colors = ['red', 'yellow', 'blue', 'green'];
+        this.gridSize = 40;
+        this.passengers = []; this.cars = []; this.dockPassengers = []; this.dockCars = [];
+        this.maxPassengerSlots = 7; this.maxCarSlots = 3;
+        this.pGridW = 8; this.pGridH = 6; this.cGridW = 8; this.cGridH = 6;
+        this.isMovingBatch = false;
+        this.init();
     }
-  });
-  shuffle(passengerPool);
-
-  // 初始化乘客格子
-  passengerGrid = new Array(GRID_SIZE).fill(null);
-  refillPassengerGrid();
-
-  // 初始化堵车车道
-  jamLane = new Array(LANE_SIZE).fill(null);
-  const shuffledCars = carConfigs.slice();
-  shuffle(shuffledCars);
-  for(let i=0;i<LANE_SIZE;i++){
-    jamLane[i] = shuffledCars[i];
-  }
-
-  renderPassengerGrid();
-  renderJamLane();
-  renderWaitingPassengers();
-  renderWaitingCars();
-}
-
-function refillPassengerGrid(){
-  for(let i=0;i<GRID_SIZE;i++){
-    if(!passengerGrid[i] && passengerPool.length>0){
-      const color = passengerPool.pop();
-      passengerGrid[i] = {id:nextId++, color};
+    init() {
+        document.getElementById('modal').style.display = 'none';
+        this.dockPassengers = []; this.dockCars = []; this.passengers = []; this.cars = [];
+        this.isMovingBatch = false;
+        this.renderDocks(); this.generateLevel(); this.updateStatus();
     }
-  }
-}
-
-function renderPassengerGrid(){
-  gridEl.innerHTML = '';
-  for(let i=0;i<GRID_SIZE;i++){
-    const cell = document.createElement('div');
-    cell.className = 'grid-cell';
-    cell.dataset.index = i;
-    const passenger = passengerGrid[i];
-    if(passenger){
-      const token = document.createElement('div');
-      token.className = 'passenger token ' + passenger.color;
-      if(selectedPassengerIndices.includes(i)){
-        token.classList.add('selected');
-      }
-      cell.appendChild(token);
+    generateLevel() {
+        const pZone = document.getElementById('passenger-zone');
+        const cZone = document.getElementById('car-zone');
+        pZone.innerHTML = '<div class="exit-gate"></div>'; cZone.innerHTML = '';
+        let totalCars = 8; let carDefs = [];
+        for(let i=0; i<totalCars; i++) carDefs.push({ color: this.colors[Math.floor(Math.random() * this.colors.length)], capacity: 3 });
+        let passengerDefs = [];
+        carDefs.forEach(car => { for(let k=0; k<car.capacity; k++) passengerDefs.push(car.color); });
+        passengerDefs.sort(() => Math.random() - 0.5);
+        let carMap = new Array(this.cGridW * this.cGridH).fill(0);
+        carDefs.forEach((def, index) => {
+            let placed = false, attempts = 0;
+            while(!placed && attempts < 200) {
+                attempts++;
+                let isVertical = Math.random() > 0.5;
+                let w = isVertical ? 1 : 2, h = isVertical ? 2 : 1;
+                let x = Math.floor(Math.random() * (this.cGridW - w + 1));
+                let y = Math.floor(Math.random() * (this.cGridH - h + 1));
+                let collide = false;
+                for(let ix=x; ix<x+w; ix++) for(let iy=y; iy<y+h; iy++) if(carMap[iy * this.cGridW + ix] === 1) collide = true;
+                if(!collide) {
+                    for(let ix=x; ix<x+w; ix++) for(let iy=y; iy<y+h; iy++) carMap[iy * this.cGridW + ix] = 1;
+                    let face = isVertical ? (y < 3 ? 'face-u' : 'face-d') : (x < 4 ? 'face-l' : 'face-r');
+                    let carObj = { 
+                        id: index, color: def.color, x: x, y: y, w: w, h: h, dir: isVertical ? 'v' : 'h', 
+                        face: face, capacity: def.capacity, load: 0, el: null, 
+                        isDeparting: false // 新增: 防止重复发车
+                    };
+                    this.createCarElement(carObj); this.cars.push(carObj); placed = true;
+                }
+            }
+        });
+        let validSlots = [];
+        for(let i=0; i<this.pGridW * this.pGridH; i++) {
+            let px = i % this.pGridW, py = Math.floor(i / this.pGridW);
+            if(!(py === 5 && (px === 3 || px === 4))) validSlots.push(i);
+        }
+        validSlots.sort(() => Math.random() - 0.5);
+        passengerDefs.forEach((color, idx) => {
+            if(idx < validSlots.length) {
+                let slot = validSlots[idx];
+                let pObj = { id: idx, color: color, x: slot % this.pGridW, y: Math.floor(slot / this.pGridW), el: null, moving: false, isAwake: false };
+                this.createPassengerElement(pObj); this.passengers.push(pObj);
+            }
+        });
+        let wallCount = 5;
+        for(let i=0; i<wallCount; i++) {
+           if(validSlots.length > passengerDefs.length + i) {
+               let slot = validSlots[passengerDefs.length + i];
+               this.createWall(slot % this.pGridW, Math.floor(slot / this.pGridW));
+               this.passengers.push({ x: slot % this.pGridW, y: Math.floor(slot / this.pGridW), isWall: true }); 
+           }
+        }
+        this.passengersLeft = passengerDefs.length; this.carsLeft = this.cars.length;
     }
-    gridEl.appendChild(cell);
-  }
-}
-
-function renderJamLane(){
-  jamLaneEl.innerHTML = '';
-  for(let i=0;i<LANE_SIZE;i++){
-    const cell = document.createElement('div');
-    cell.className = 'lane-cell';
-    cell.dataset.index = i;
-    const car = jamLane[i];
-    if(car){
-      const carEl = document.createElement('div');
-      carEl.className = 'car token ' + car.color;
-      const label = document.createElement('div');
-      label.className = 'car-label';
-      label.textContent = car.capacity; // 显示总座位数
-      carEl.appendChild(label);
-      cell.appendChild(carEl);
+    createPassengerElement(p) {
+        let el = document.createElement('div'); el.className = `passenger ${p.color}`;
+        el.style.left = (p.x * 40) + 'px'; el.style.top = (p.y * 40) + 'px';
+        el.onclick = () => this.clickPassenger(p);
+        document.getElementById('passenger-zone').appendChild(el); p.el = el;
     }
-    jamLaneEl.appendChild(cell);
-  }
-}
-
-function renderWaitingPassengers(){
-  waitingPassengersEl.innerHTML = '';
-  waitingPassengers.forEach(p=>{
-    const el = document.createElement('div');
-    el.className = 'passenger token ' + p.color;
-    waitingPassengersEl.appendChild(el);
-  });
-  const info = document.getElementById('waiting-passengers-info');
-  if(info){
-    info.textContent = waitingPassengers.length + '/' + MAX_WAITING_PASSENGERS;
-  }
-}
-
-function renderWaitingCars(){
-  waitingCarsEl.innerHTML = '';
-  waitingCars.forEach(car=>{
-    const el = document.createElement('div');
-    el.className = 'car token ' + car.color;
-    const label = document.createElement('div');
-    label.className = 'car-label';
-    label.textContent = car.loaded + '/' + car.capacity;
-    el.appendChild(label);
-    waitingCarsEl.appendChild(el);
-  });
-  const info = document.getElementById('waiting-cars-info');
-  if(info){
-    info.textContent = waitingCars.length + '/' + MAX_WAITING_CARS;
-  }
-}
-
-function setMessage(text){
-  messageEl.textContent = text || '';
-}
-
-function handlePassengerClick(idx){
-  if(gameOver) return;
-  const passenger = passengerGrid[idx];
-  if(!passenger) return;
-
-  const selPos = selectedPassengerIndices.indexOf(idx);
-  if(selPos !== -1){
-    selectedPassengerIndices.splice(selPos,1);
-  }else{
-    selectedPassengerIndices.push(idx);
-  }
-
-  if(selectedPassengerIndices.length === 3){
-    const colors = selectedPassengerIndices.map(i=>passengerGrid[i]?.color);
-    if(colors[0] && colors.every(c=>c === colors[0])){
-      const matchColor = colors[0];
-      // 删除格子中的乘客
-      selectedPassengerIndices.forEach(i=>{
-        passengerGrid[i] = null;
-      });
-      selectedPassengerIndices = [];
-      // 补全乘客格子
-      refillPassengerGrid();
-      renderPassengerGrid();
-      // 将 3 名乘客放入等候区
-      addPassengersToWaiting(matchColor,3);
-      autoBoardAll();
-      checkWinLose();
-      setMessage('');
-    }else{
-      // 颜色不一致，清空选中
-      selectedPassengerIndices = [];
-      renderPassengerGrid();
-      setMessage('需要选择三个相同颜色的乘客。');
+    createWall(x, y) {
+        let el = document.createElement('div'); el.className = 'passenger wall';
+        el.style.left = (x * 40) + 'px'; el.style.top = (y * 40) + 'px';
+        document.getElementById('passenger-zone').appendChild(el);
     }
-  }else{
-    renderPassengerGrid();
-  }
-}
-
-function handleCarClick(idx){
-  if(gameOver) return;
-  const car = jamLane[idx];
-  if(!car) return;
-  // 检查右侧是否有车阻挡
-  for(let i=idx+1;i<LANE_SIZE;i++){
-    if(jamLane[i]){
-      setMessage('前方有车辆阻挡，这辆车暂时无法驶入等候区。');
-      return;
+    createCarElement(car) {
+        let el = document.createElement('div');
+        el.className = `car ${car.color} ${car.dir === 'v' ? 'vertical' : ''} ${car.face}`;
+        el.style.left = (car.x * 40) + 'px'; el.style.top = (car.y * 40) + 'px';
+        el.style.width = (car.w * 40 - 4) + 'px'; el.style.height = (car.h * 40 - 4) + 'px';
+        let seats = ''; for(let i=0;i<car.capacity;i++) seats+=`<span class="seat-dot" id="seat-${car.id}-${i}"></span>`;
+        el.innerHTML = `<div class="car-lights"></div><div class="car-contents">${seats}</div>`;
+        el.onclick = () => this.clickCar(car);
+        document.getElementById('car-zone').appendChild(el); car.el = el;
     }
-  }
-  // 移动车辆到等候区
-  jamLane[idx] = null;
-  renderJamLane();
-  addCarToWaiting(car);
-  autoBoardAll();
-  checkWinLose();
-}
-
-function addPassengersToWaiting(color,count){
-  for(let i=0;i<count;i++){
-    waitingPassengers.push({id:nextId++, color});
-  }
-  renderWaitingPassengers();
-}
-
-function addCarToWaiting(car){
-  if(typeof car.loaded !== 'number') car.loaded = 0;
-  waitingCars.push(car);
-  renderWaitingCars();
-}
-
-function autoBoardAll(){
-  let changed = false;
-  do{
-    changed = false;
-    // 尝试给每辆车自动上客
-    for(const car of waitingCars){
-      let room = car.capacity - car.loaded;
-      if(room <= 0) continue;
-      let idx = waitingPassengers.findIndex(p=>p.color === car.color);
-      while(idx !== -1 && room > 0){
-        waitingPassengers.splice(idx,1);
-        car.loaded += 1;
-        room -= 1;
-        changed = true;
-        idx = waitingPassengers.findIndex(p=>p.color === car.color);
-      }
+    renderDocks() {
+        document.getElementById('passenger-dock').innerHTML = ''; document.getElementById('car-dock').innerHTML = '';
+        for(let i=0;i<7;i++) { let s = document.createElement('div'); s.className = 'slot'; s.id = `p-slot-${i}`; document.getElementById('passenger-dock').appendChild(s); }
+        for(let i=0;i<3;i++) { let s = document.createElement('div'); s.className = 'car-slot'; s.id = `c-slot-${i}`; document.getElementById('car-dock').appendChild(s); }
     }
-    // 满员的车离开
-    for(let i=waitingCars.length-1;i>=0;i--){
-      const car = waitingCars[i];
-      if(car.loaded >= car.capacity){
-        waitingCars.splice(i,1);
-        departedCars += 1;
-        changed = true;
-      }
+    async clickPassenger(p) {
+        if(this.isMovingBatch || p.moving || p.inDock || p.isWall) return;
+        if (p.isAwake) { p.isAwake = false; p.el.classList.remove('awake'); return; }
+        let path = this.findPath(p.x, p.y, { ignoreColor: p.color });
+        if (!path) { p.el.classList.remove('shake'); void p.el.offsetWidth; p.el.classList.add('shake'); return; }
+        p.isAwake = true; p.el.classList.add('awake');
+        this.checkAwakeTriplet(p.color);
     }
-  }while(changed);
-
-  renderWaitingPassengers();
-  renderWaitingCars();
-}
-
-function hasAnyMatch(){
-  for(const car of waitingCars){
-    const room = car.capacity - car.loaded;
-    if(room <= 0) continue;
-    if(waitingPassengers.some(p=>p.color === car.color)){
-      return true;
+    async checkAwakeTriplet(color) {
+        let awakeList = this.passengers.filter(p => p.color === color && p.isAwake);
+        if (awakeList.length === 3) {
+            if (this.dockPassengers.length + 3 > this.maxPassengerSlots) {
+                awakeList.forEach(p => { p.el.classList.add('shake'); setTimeout(() => p.el.classList.remove('shake'), 400); });
+                awakeList[2].isAwake = false; awakeList[2].el.classList.remove('awake'); return;
+            }
+            let awakeIds = awakeList.map(p => p.id);
+            this.isMovingBatch = true;
+            let promises = awakeList.map(p => {
+                p.isAwake = false; p.el.classList.remove('awake'); p.inDock = true; p.moving = true;
+                let finalPath = this.findPath(p.x, p.y, { ignoreIds: awakeIds });
+                return this.animatePassengerPath(p, finalPath || []);
+            });
+            await Promise.all(promises);
+            this.isMovingBatch = false;
+        }
     }
-  }
-  return false;
+    findPath(startX, startY, options = {}) {
+        let queue = [{x: startX, y: startY}];
+        let cameFrom = {}; cameFrom[`${startX},${startY}`] = null;
+        let obstacleMap = new Map();
+        this.passengers.forEach(p => { if(!p.inDock) { if(p.isWall) obstacleMap.set(`${p.x},${p.y}`, p); else obstacleMap.set(`${p.x},${p.y}`, p); } });
+        let foundExit = null;
+        while(queue.length > 0) {
+            let curr = queue.shift();
+            if(curr.y === 5 && (curr.x === 3 || curr.x === 4)) { foundExit = curr; break; }
+            let dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+            for(let d of dirs) {
+                let nx = curr.x + d[0], ny = curr.y + d[1];
+                if(nx >=0 && nx < 8 && ny >= 0 && ny < 6) {
+                    let key = `${nx},${ny}`;
+                    if(cameFrom.hasOwnProperty(key)) continue;
+                    let obstacle = obstacleMap.get(key);
+                    let isBlocked = false;
+                    if (obstacle) {
+                        if (obstacle.isWall) isBlocked = true;
+                        else {
+                            let shouldIgnore = false;
+                            if (options.ignoreColor && obstacle.color === options.ignoreColor) shouldIgnore = true;
+                            if (options.ignoreIds && options.ignoreIds.includes(obstacle.id)) shouldIgnore = true;
+                            if (obstacle.x === startX && obstacle.y === startY) shouldIgnore = true;
+                            if (!shouldIgnore) isBlocked = true;
+                        }
+                    }
+                    if(!isBlocked) { cameFrom[key] = curr; queue.push({x: nx, y: ny}); }
+                }
+            }
+        }
+        if(!foundExit) return null;
+        let path = []; let curr = foundExit;
+        while(curr !== null) { path.push(curr); curr = cameFrom[`${curr.x},${curr.y}`]; }
+        path.reverse(); return path; 
+    }
+    async animatePassengerPath(p, path) {
+        p.el.classList.add('moving');
+        if (!path || path.length === 0) { this.animatePassengerJumpToDock(p); return; }
+        for(let i = 1; i < path.length; i++) {
+            let nextNode = path[i];
+            let tL = nextNode.x * 40, tT = nextNode.y * 40;
+            let cL = parseInt(p.el.style.left), cT = parseInt(p.el.style.top);
+            let anim = p.el.animate([{transform:'translate(0,0)'},{transform:`translate(${tL - cL}px, ${tT - cT}px)`}], {duration:100, easing:'linear'});
+            await new Promise(r => anim.onfinish = r);
+            p.el.style.left = tL + 'px'; p.el.style.top = tT + 'px';
+        }
+        this.animatePassengerJumpToDock(p);
+    }
+    animatePassengerJumpToDock(p) {
+        let slotIdx = this.dockPassengers.length;
+        this.dockPassengers.push(p);
+        let slotEl = document.getElementById(`p-slot-${slotIdx}`);
+        let oldRect = p.el.getBoundingClientRect();
+        let slotRect = slotEl.getBoundingClientRect();
+        p.el.remove();
+        let flyingEl = document.createElement('div');
+        flyingEl.className = `passenger ${p.color}`;
+        flyingEl.style.position = 'fixed';
+        flyingEl.style.left = oldRect.left + 'px'; flyingEl.style.top = oldRect.top + 'px';
+        flyingEl.style.zIndex = 1000;
+        document.body.appendChild(flyingEl);
+        let flyAnim = flyingEl.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${slotRect.left - oldRect.left + 2}px, ${slotRect.top - oldRect.top + 2}px) scale(0.8)`}], {duration:300, easing:'ease-in-out'});
+        flyAnim.onfinish = () => {
+            flyingEl.remove();
+            let newEl = document.createElement('div');
+            newEl.className = `passenger ${p.color}`;
+            newEl.style.position = 'relative'; newEl.style.left=0; newEl.style.top=0;
+            slotEl.appendChild(newEl);
+            newEl.animate([{transform:'scale(0.5)'},{transform:'scale(1.1)'},{transform:'scale(1)'}], {duration:200});
+            p.dockEl = newEl;
+            this.checkBoarding();
+            this.checkGameState();
+        };
+    }
+    clickCar(c) {
+        if(this.dockCars.length >= this.maxCarSlots) return;
+        if(c.inDock) return;
+        if(this.canCarExit(c)) this.animateCarExit(c);
+        else { c.el.classList.remove('shake'); void c.el.offsetWidth; c.el.classList.add('shake'); }
+    }
+    canCarExit(c) {
+        let map = new Set();
+        this.cars.forEach(oc => {
+            if(oc !== c && !oc.inDock) for(let ix=0; ix<oc.w; ix++) for(let iy=0; iy<oc.h; iy++) map.add(`${oc.x+ix},${oc.y+iy}`);
+        });
+        let L=true, R=true, U=true, D=true;
+        if(c.dir === 'h') {
+            for(let x=c.x-1; x>=-1; x--) { if(x<0)break; if(map.has(`${x},${c.y}`)) { L=false; break; } }
+            for(let x=c.x+c.w; x<=this.cGridW; x++) { if(x>=this.cGridW)break; if(map.has(`${x},${c.y}`)) { R=false; break; } }
+            return L||R;
+        } else {
+            for(let y=c.y-1; y>=-1; y--) { if(y<0)break; if(map.has(`${c.x},${y}`)) { U=false; break; } }
+            for(let y=c.y+c.h; y<=this.cGridH; y++) { if(y>=this.cGridH)break; if(map.has(`${c.x},${y}`)) { D=false; break; } }
+            return U||D;
+        }
+    }
+    animateCarExit(c) {
+        c.inDock = true;
+        let slotIdx = this.dockCars.length;
+        this.dockCars.push(c);
+        let dX=0, dY=0;
+        if(c.dir === 'h') { c.x<4 ? dX=-400 : dX=400; } else { c.y<3 ? dY=-400 : dY=400; }
+        let anim = c.el.animate([{transform:'translate(0,0)'},{transform:`translate(${dX}px,${dY}px)`,opacity:0}], {duration:400, easing:'ease-in'});
+        anim.onfinish = () => {
+            c.el.style.visibility = 'hidden';
+            let slot = document.getElementById(`c-slot-${slotIdx}`);
+            let newEl = document.createElement('div');
+            newEl.className = `car ${c.color} ${c.dir === 'v' ? 'vertical' : ''} ${c.face}`;
+            newEl.style.position='relative'; newEl.style.width='100%'; newEl.style.height='100%'; newEl.style.left=0; newEl.style.top=0;
+            let seats = ''; for(let i=0;i<c.capacity;i++) seats+=`<span class="seat-dot" id="seat-${c.id}-${i}"></span>`;
+            newEl.innerHTML = `<div class="car-lights"></div><div class="car-contents">${seats}</div>`;
+            slot.appendChild(newEl);
+            c.dockEl = newEl;
+            newEl.animate([{transform:'translateX(100px)',opacity:0},{transform:'translateX(0)',opacity:1}], {duration:300});
+            setTimeout(() => {this.checkBoarding();this.checkGameState();}, 300);
+        };
+    }
+
+    // --- 核心修复区域 ---
+    checkBoarding() {
+        let changed = false;
+        this.dockCars.forEach(car => {
+            // 如果没满，且没有正在离开
+            if(car.load < car.capacity && !car.isDeparting) {
+                let pIndex = this.dockPassengers.findIndex(p => p.color === car.color && p.dockEl);
+                if(pIndex !== -1) {
+                    let p = this.dockPassengers[pIndex];
+                    this.dockPassengers.splice(pIndex, 1);
+                    
+                    car.load++; // 先逻辑占座
+                    
+                    // 传入回调：只有在这个乘客动画完全结束后，才判断是否发车
+                    if(p.dockEl) {
+                        this.animatePassengerBoarding(p, car, car.load - 1, () => {
+                            // 回调函数：动画结束瞬间执行
+                            if(car.load >= car.capacity && !car.isDeparting) {
+                                car.isDeparting = true; // 锁定
+                                // 停顿 0.1 秒后发车
+                                setTimeout(() => {
+                                    this.carDepart(car);
+                                }, 100);
+                            }
+                        });
+                    }
+                    
+                    this.rearrangePassengerDock();
+                    changed = true;
+                }
+            }
+        });
+
+        // 移除原来直接在循环外调用carDepart的逻辑，全部移交到 animatePassengerBoarding 的回调中处理
+        
+        if(changed) setTimeout(()=>this.checkBoarding(),200);
+    }
+
+    animatePassengerBoarding(p, car, seatIndex, onComplete) {
+        let el = p.dockEl;
+        let startRect = el.getBoundingClientRect();
+        let carSlotIdx = this.dockCars.indexOf(car);
+        let slotEl = document.getElementById(`c-slot-${carSlotIdx}`);
+        let slotRect = slotEl.getBoundingClientRect();
+        let seatEl = document.getElementById(`seat-${car.id}-${seatIndex}`);
+        let targetX = slotRect.left + seatEl.offsetLeft + (seatEl.offsetWidth/2) - (startRect.width/2);
+        let targetY = slotRect.top + seatEl.offsetTop + (seatEl.offsetHeight/2) - (startRect.height/2);
+        el.style.position = 'fixed'; el.style.left = startRect.left + 'px'; el.style.top = startRect.top + 'px';
+        el.style.margin = 0; el.style.zIndex = 2000;
+        document.body.appendChild(el);
+        
+        let anim = el.animate([{transform:'translate(0,0) scale(1)'},{transform:`translate(${targetX - startRect.left}px, ${targetY - startRect.top}px) scale(0.3)`}], {duration:300, easing:'cubic-bezier(.5,0,.5,1)'});
+        
+        anim.onfinish = () => { 
+            el.remove(); 
+            seatEl.classList.add('seat-filled'); 
+            car.dockEl.classList.remove('bounce'); void car.dockEl.offsetWidth; car.dockEl.classList.add('bounce');
+            
+            // 动画结束后，执行传入的回调（用于判断发车）
+            if(onComplete) onComplete();
+        };
+    }
+
+    carDepart(car) { // 修改参数，直接接收 car 对象，防止索引偏移
+        let i = this.dockCars.indexOf(car);
+        if(i === -1) return;
+
+        let c = this.dockCars[i];
+        let a = c.dockEl.animate([{transform:'translateX(0)'},{transform:'translateX(-300px)',opacity:0}],{duration:500,easing:'ease-in'});
+        
+        // 逻辑移除
+        this.dockCars.splice(i,1);
+        
+        a.onfinish = () => { 
+            if(c.dockEl.parentElement) c.dockEl.parentElement.innerHTML = ''; 
+            this.rearrangeCarDock(); 
+            this.carsLeft--; 
+            this.checkGameState(); 
+        };
+    }
+
+    rearrangePassengerDock() {
+        const dock = document.getElementById('passenger-dock');
+        this.dockPassengers.forEach((p, i) => {
+            let slot = document.getElementById(`p-slot-${i}`);
+            if(p.dockEl && p.dockEl.parentElement !== slot) slot.appendChild(p.dockEl);
+        });
+    }
+    rearrangeCarDock() {
+        this.dockCars.forEach((c, i) => {
+            let slot = document.getElementById(`c-slot-${i}`);
+            if(c.dockEl && c.dockEl.parentElement !== slot) slot.appendChild(c.dockEl);
+        });
+    }
+    updateStatus() {
+        document.getElementById('p-count').innerText = this.passengers.filter(p => !p.inDock && !p.isWall).length;
+        document.getElementById('c-count').innerText = this.cars.filter(c => !c.inDock).length;
+    }
+    checkGameState() {
+        this.updateStatus();
+        if(this.carsLeft === 0) { setTimeout(() => this.showModal('🎉 胜利！', '所有乘客都已安全送达！'), 800); return; }
+        let pFull = this.dockPassengers.length >= this.maxPassengerSlots;
+        let cFull = this.dockCars.length >= this.maxCarSlots;
+        setTimeout(() => {
+            let possible = false;
+            this.dockCars.forEach(c => { if(c.load < c.capacity && this.dockPassengers.some(p => p.color === c.color)) possible = true; });
+            if(pFull && cFull && !possible) this.showModal('😭 堵车了', '车站已瘫痪，无法继续调度。');
+        }, 1000);
+    }
+    showModal(t, m) { document.getElementById('modal-title').innerText = t; document.getElementById('modal-msg').innerText = m; document.getElementById('modal').style.display = 'flex'; }
 }
-
-function checkWinLose(){
-  if(gameOver) return;
-  const anyPassengersLeft = passengerPool.length > 0 ||
-    passengerGrid.some(cell=>cell) ||
-    waitingPassengers.length > 0;
-  const anyCarsLeft = jamLane.some(cell=>cell) ||
-    waitingCars.length > 0;
-
-  if(!anyPassengersLeft && !anyCarsLeft){
-    gameOver = true;
-    setMessage('恭喜，所有乘客都成功上车离开了！点击“重新开始”再玩一局。');
-    return;
-  }
-
-  if(waitingPassengers.length >= MAX_WAITING_PASSENGERS &&
-     waitingCars.length >= MAX_WAITING_CARS &&
-     !hasAnyMatch()){
-    gameOver = true;
-    setMessage('游戏失败：等候区乘客和车辆都已经满了，且没有可以匹配的颜色。');
-  }
-}
-
-window.addEventListener('DOMContentLoaded', ()=>{
-  gridEl = document.getElementById('passenger-grid');
-  jamLaneEl = document.getElementById('jam-lane');
-  waitingPassengersEl = document.getElementById('waiting-passengers');
-  waitingCarsEl = document.getElementById('waiting-cars');
-  messageEl = document.getElementById('message');
-
-  gridEl.addEventListener('click', e=>{
-    const cell = e.target.closest('.grid-cell');
-    if(!cell) return;
-    const idx = Number(cell.dataset.index);
-    handlePassengerClick(idx);
-  });
-
-  jamLaneEl.addEventListener('click', e=>{
-    const cell = e.target.closest('.lane-cell');
-    if(!cell) return;
-    const idx = Number(cell.dataset.index);
-    handleCarClick(idx);
-  });
-
-  document.getElementById('restart').addEventListener('click', ()=>{
-    initGame();
-  });
-
-  initGame();
-});
+const game = new Game();
 </script>
 </body>
 </html>
